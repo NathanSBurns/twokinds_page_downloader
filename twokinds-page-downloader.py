@@ -41,11 +41,6 @@ def hash_file(path):
 	return pagehash.hexdigest()
 
 # commands that can be passe dinto the program
-'''
-help: lists all the commands
-runtime: checks how long the program has been running
-checknow: immediately checks if an update has been made (if you are impatient like me and don't like to wait)
-'''
 def read_input():
 	while running:
 		try:
@@ -165,13 +160,6 @@ def main():
 	inputthread.start()
 	check_for_updates(False, True)
 
-# commented out to meet class requirements
-## hash of the most recent comic page downloaded
-# recenthash=""
-
-## hash of the file downloaded
-# targethash = ""
-
 hashtable = []
 
 ## hashes all the known files and pushes them into n Array. This runs every time the program is executed but not as it is running. A seperate process will add new file hashes to the array
@@ -183,10 +171,4 @@ for dirs, subdirs, files in os.walk(tkpath):
 		filepath = os.path.join(os.path.abspath(dirs), page)
 		if '.jpg' in filepath or '.png' in filepath:
 			hashtable.append(hash_file(filepath))
-		#print (filepath)
-# print ('file hashes:')	
-# for hashes in hashtable:
-#  	print (hashes)
-
-
 main()
