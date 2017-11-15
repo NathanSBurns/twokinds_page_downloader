@@ -76,7 +76,6 @@ def rename_if_file_exists (file_dir, file_name):
 			file_name=file_name.split('.')
 			file_name[0]=name+' ('+str(i)+')'
 			file_name='.'.join(file_name)
-			# break
 		else:
 			break
 		i+=1
