@@ -168,26 +168,27 @@ def check_for_updates(status, loop):
 			break
 # retweets the latest comic
 def retweet_latest_comic():
-	consumer_key=""
-	consumer_secret=""
-	access_token_key=""
-	access_token_secret=""
+	while True:
+		consumer_key=""
+		consumer_secret=""
+		access_token_key=""
+		access_token_secret=""
 
-	# You must define your own keys and tokens
-	api = twitter.Api(consumer_key=consumer_key,
-	                      consumer_secret=consumer_secret,
-	                      access_token_key=access_token_key,
-	                      access_token_secret=access_token_secret)
-	comictweets=[] 
-	statuses = api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True)
-	for s in api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True):
-		# Tom follows a very specific format for his posts, which makes my job a hell of a lot easier. Thanks, Tom!
-		if ("[Comic][" in s.text):
-			comictweets.append(s.text)\
-			# if the update has not been retweeted
-			if (not s.retweeted):
-				api.PostRetweet(s.id, trim_user=False)
-				print ("Retweeted Comic update!\n"+comictweets[0])
+		# You must define your own keys and tokens
+		api = twitter.Api(consumer_key=consumer_key,
+				      consumer_secret=consumer_secret,
+				      access_token_key=access_token_key,
+				      access_token_secret=access_token_secret)
+		comictweets=[] 
+		statuses = api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True)
+		for s in api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True):
+			# Tom follows a very specific format for his posts, which makes my job a hell of a lot easier. Thanks, Tom!
+			if ("[Comic][" in s.text):
+				comictweets.append(s.text)\
+				# if the update has not been retweeted
+				if (not s.retweeted):
+					api.PostRetweet(s.id, trim_user=False)
+					print ("Retweeted Comic update!\n"+comictweets[0])
 
 def main():
 	inputthread=threading.Thread(target=read_input)
