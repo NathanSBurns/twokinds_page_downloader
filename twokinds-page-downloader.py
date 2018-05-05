@@ -1,6 +1,6 @@
 # This program downloads the last page uploaded to the TwoKinds website (twokinds.keenspot.com)
 
-import requests, time, hashlib, sys, os, urllib, threading
+import requests, time, hashlib, os, urllib, threading, json
 from bs4 import BeautifulSoup as BS
 #why is this even a thing?
 from datetime import datetime
@@ -8,7 +8,7 @@ from datetime import datetime
 ## used to keep track elapsed time
 start_time=datetime.now().replace(microsecond=0).replace(microsecond=0)
 # default sleep_time
-sleep_time=300
+sleep_time=45
 #used for ending threads
 running=True
 
@@ -40,7 +40,28 @@ def hash_file(path):
 	p.close()
 	return pagehash.hexdigest()
 
+def hash_download(file):
+	pagehash = hashlib.md5()
+	while True:
+		data = file.read()
+		if not data:
+			break
+		pagehash.update(data)
+	return pagehash.hexdigest()
+
+def errormessage(e):
+	if "Errno 10060" in e:
+		print ("[ERROR: 10060] Unable to connect to twokinds.keenspot.com")
+	elif "Errno 11001" in e:
+		print ("[ERROR: 11001] Unable to connect to twokinds.keenspot.com")
+	else:
+	    print(e)
 # commands that can be passe dinto the program
+'''
+help: lists all the commands
+runtime: checks how long the program has been running
+checknow: immediately checks if an update has been made (if you are impatient like me and don't like to wait)
+'''
 def read_input():
 	while running:
 		try:
@@ -65,7 +86,7 @@ def read_input():
 			else:
 				print ('command "', command, '" not recognized')
 		except Exception as e:
-			print (e)
+			errormessage(str(e))
 
 ## renames the file if it already exists
 def rename_if_file_exists (file_dir, file_name):
@@ -76,10 +97,16 @@ def rename_if_file_exists (file_dir, file_name):
 			file_name=file_name.split('.')
 			file_name[0]=name+' ('+str(i)+')'
 			file_name='.'.join(file_name)
+			# break
 		else:
 			break
 		i+=1
 	return file_name	
+def remove_temp():
+	global tkpath
+	temp=tkpath+'temp'
+	if os.path.isfile (temp):
+		os.remove(temp)
 
 # status: Boolean. True prints updates, False displays nothing
 # loop: Boolean describing whether or not updates will loop
@@ -96,57 +123,62 @@ def check_for_updates(status, loop):
 		try:
 		    response = opener.open(url)
 		except urllib.error.HTTPError as e:
-		    print(e)
+			errormessage(str(e))
 		except Exception as e:
-		    print(e)
+			errormessage(str(e))
 		else: 
 			html = response.read().decode()
 			response.close()
 			soup = BS(html, "html.parser")
-			for classes in soup.find_all('class'):
-				print (classes)
+			# for classes in soup.find_all('class'):
+			# 	print (classes)
+			latestimage = []
 			for images in soup.find_all('img'):
 				if 'http://cdn.twokinds.keenspot.com/comics/' in images['src']:
-					
-					latestimage = images['src']
-					imagename = latestimage.split('/')[-1]
+					latestimage.append(images['src'])
 					
 
-					'''# for trouble shooting and visual aid
-					print('latest image: ', latestimage)
-					print ('image name: ', imagename)'''
-
-			try:
-			    pagedownloader = opener.open(latestimage)
-			except urllib.error.HTTPError as e:
-			    print(e)
-			except Exception as e:
-			    print(e)
-			else:
-				temp = tkpath+'temp'
-				downloadedimage = open(temp, 'wb')
-				downloadedimage.write(pagedownloader.read())
-				downloadedimage.close()
-
-				# hash of the temp file
-				temphash = hash_file(temp)
-				# print ('latest hash:\t', temphash)
-				
-				if temphash not in hashtable:
-					imagename= rename_if_file_exists (tkpath, imagename)
-					os.rename(temp, tkpath+imagename)
-					hashtable.append(hash_file(tkpath+imagename))
-					print ('\n\nNew page found! Adding ', imagename, ' to the database.\nFile Name:\t',	imagename, '\nHash:\t\t', temphash)
-
+			for images in latestimage:
+				imagename = images.split('/')[-1]
+				# print (images)
+				'''# for trouble shooting and visual aid
+				print('latest image: ', latestimage)
+				print ('image name: ', imagename)'''
+				try:
+				    pagedownloader = opener.open(images)
+				except urllib.error.HTTPError as e:
+					errormessage("urllib error:\t"+str(e))
+				except Exception as e:
+					errormessage(str(e))
 				else:
-					if status:
-						print ('No update found\n')
-				
-				# usually the temp file should not be present. However, if the program was executed after the latest 
-				# page was downloaded, the temp file will still be created 
-				if os.path.isfile (temp):
-					os.remove(temp)
-				pagedownloader.close()
+					# temp = tkpath+'temp'
+					# downloadedimage = open(temp, 'wb')
+					# downloadedimage.write(pagedownloader.read())
+					# downloadedimage.close()
+
+					# hash of the temp file
+					# temphash = hash_file(temp)
+					temphash = hash_download(opener.open(images))
+					# print ('latest hash:\t', temphash)
+					
+					if temphash not in hashtable:
+						imagename= rename_if_file_exists (tkpath, imagename)
+						downloadedimage = open(tkpath+imagename, 'wb')
+						downloadedimage.write(pagedownloader.read())
+						downloadedimage.close()
+						# os.rename(temp, tkpath+imagename)
+						hashtable.append(hash_file(tkpath+imagename))
+						print ('\n\nNew page found! Adding ', imagename, ' to the database.\nFile Name:\t',	imagename, '\nHash:\t\t', temphash)
+
+					else:
+						if status:
+							os.remove(temp)
+							print ('No update found\n')
+					
+					# usually the temp file should not be present. However, if the program was terminated before the temp file 
+					# was removed, the temp file may remain
+					# remove_temp()
+					pagedownloader.close()
 		if loop and running:
 			i=0
 			while i < get_sleep_time() and running:
@@ -159,9 +191,17 @@ def main():
 	inputthread.start()
 	check_for_updates(False, True)
 
+# commented out to meet class requirements
+## hash of the most recent comic page downloaded
+# recenthash=""
+
+## hash of the file downloaded
+# targethash = ""
+
 hashtable = []
 
 ## hashes all the known files and pushes them into n Array. This runs every time the program is executed but not as it is running. A seperate process will add new file hashes to the array
+##working directory. This is my personal directory. Change it to your liking if you want.
 tkpath = "D:/Users/Hyginx/Pictures/TwoKinds/"
 # tkpath=input("Path: ")
 print ('hashing files')
@@ -170,4 +210,9 @@ for dirs, subdirs, files in os.walk(tkpath):
 		filepath = os.path.join(os.path.abspath(dirs), page)
 		if '.jpg' in filepath or '.png' in filepath:
 			hashtable.append(hash_file(filepath))
+		#print (filepath)
+# print ('file hashes:')	
+# for hashes in hashtable:
+#  	print (hashes)
+
 main()
