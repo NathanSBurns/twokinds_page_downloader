@@ -1,6 +1,6 @@
 # This program downloads the last page uploaded to the TwoKinds website (twokinds.keenspot.com)
 
-import requests, time, hashlib, os, urllib, threading, json
+import requests, time, hashlib, os, urllib, threading, json, twitter
 from bs4 import BeautifulSoup as BS
 #why is this even a thing?
 from datetime import datetime
@@ -97,7 +97,6 @@ def rename_if_file_exists (file_dir, file_name):
 			file_name=file_name.split('.')
 			file_name[0]=name+' ('+str(i)+')'
 			file_name='.'.join(file_name)
-			# break
 		else:
 			break
 		i+=1
@@ -130,8 +129,6 @@ def check_for_updates(status, loop):
 			html = response.read().decode()
 			response.close()
 			soup = BS(html, "html.parser")
-			# for classes in soup.find_all('class'):
-			# 	print (classes)
 			latestimage = []
 			for images in soup.find_all('img'):
 				if 'http://cdn.twokinds.keenspot.com/comics/' in images['src']:
@@ -140,10 +137,6 @@ def check_for_updates(status, loop):
 
 			for images in latestimage:
 				imagename = images.split('/')[-1]
-				# print (images)
-				'''# for trouble shooting and visual aid
-				print('latest image: ', latestimage)
-				print ('image name: ', imagename)'''
 				try:
 				    pagedownloader = opener.open(images)
 				except urllib.error.HTTPError as e:
@@ -151,22 +144,13 @@ def check_for_updates(status, loop):
 				except Exception as e:
 					errormessage(str(e))
 				else:
-					# temp = tkpath+'temp'
-					# downloadedimage = open(temp, 'wb')
-					# downloadedimage.write(pagedownloader.read())
-					# downloadedimage.close()
-
-					# hash of the temp file
-					# temphash = hash_file(temp)
 					temphash = hash_download(opener.open(images))
-					# print ('latest hash:\t', temphash)
 					
 					if temphash not in hashtable:
 						imagename= rename_if_file_exists (tkpath, imagename)
 						downloadedimage = open(tkpath+imagename, 'wb')
 						downloadedimage.write(pagedownloader.read())
 						downloadedimage.close()
-						# os.rename(temp, tkpath+imagename)
 						hashtable.append(hash_file(tkpath+imagename))
 						print ('\n\nNew page found! Adding ', imagename, ' to the database.\nFile Name:\t',	imagename, '\nHash:\t\t', temphash)
 
@@ -174,10 +158,6 @@ def check_for_updates(status, loop):
 						if status:
 							os.remove(temp)
 							print ('No update found\n')
-					
-					# usually the temp file should not be present. However, if the program was terminated before the temp file 
-					# was removed, the temp file may remain
-					# remove_temp()
 					pagedownloader.close()
 		if loop and running:
 			i=0
@@ -186,22 +166,40 @@ def check_for_updates(status, loop):
 				i+=1
 		else:
 			break
+# retweets the latest comic
+def retweet_latest_comic():
+	consumer_key=""
+	consumer_secret=""
+	access_token_key=""
+	access_token_secret=""
+
+	# You must define your own keys and tokens
+	api = twitter.Api(consumer_key=consumer_key,
+	                      consumer_secret=consumer_secret,
+	                      access_token_key=access_token_key,
+	                      access_token_secret=access_token_secret)
+	comictweets=[] 
+	statuses = api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True)
+	for s in api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True):
+		# Tom follows a very specific format for his posts, which makes my job a hell of a lot easier. Thanks, Tom!
+		if ("[Comic][" in s.text):
+			comictweets.append(s.text)\
+			# if the update has not been retweeted
+			if (not s.retweeted):
+				api.PostRetweet(s.id, trim_user=False)
+				print ("Retweeted Comic update!\n"+comictweets[0])
+
 def main():
 	inputthread=threading.Thread(target=read_input)
 	inputthread.start()
+	twitterthread=threading.Thread(target=retweet_latest_comic)
+	twitterthread.start()
 	check_for_updates(False, True)
 
-# commented out to meet class requirements
-## hash of the most recent comic page downloaded
-# recenthash=""
-
-## hash of the file downloaded
-# targethash = ""
 
 hashtable = []
 
 ## hashes all the known files and pushes them into n Array. This runs every time the program is executed but not as it is running. A seperate process will add new file hashes to the array
-##working directory. This is my personal directory. Change it to your liking if you want.
 tkpath = "D:/Users/Hyginx/Pictures/TwoKinds/"
 # tkpath=input("Path: ")
 print ('hashing files')
@@ -210,9 +208,5 @@ for dirs, subdirs, files in os.walk(tkpath):
 		filepath = os.path.join(os.path.abspath(dirs), page)
 		if '.jpg' in filepath or '.png' in filepath:
 			hashtable.append(hash_file(filepath))
-		#print (filepath)
-# print ('file hashes:')	
-# for hashes in hashtable:
-#  	print (hashes)
 
 main()
