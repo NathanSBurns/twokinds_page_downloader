@@ -169,26 +169,32 @@ def check_for_updates(status, loop):
 # retweets the latest comic
 def retweet_latest_comic():
 	while True:
-		consumer_key=""
-		consumer_secret=""
-		access_token_key=""
-		access_token_secret=""
+		try:
+			# You must define your own keys and tokens
+			consumer_key=""
+			consumer_secret=""
+			access_token_key=""
+			access_token_secret=""
 
-		# You must define your own keys and tokens
-		api = twitter.Api(consumer_key=consumer_key,
-				      consumer_secret=consumer_secret,
-				      access_token_key=access_token_key,
-				      access_token_secret=access_token_secret)
-		comictweets=[] 
-		statuses = api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True)
-		for s in api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True):
-			# Tom follows a very specific format for his posts, which makes my job a hell of a lot easier. Thanks, Tom!
-			if ("[Comic][" in s.text):
-				comictweets.append(s.text)\
-				# if the update has not been retweeted
-				if (not s.retweeted):
-					api.PostRetweet(s.id, trim_user=False)
-					print ("Retweeted Comic update!\n"+comictweets[0])
+			api = twitter.Api(consumer_key=consumer_key,
+			                      consumer_secret=consumer_secret,
+			                      access_token_key=access_token_key,
+			                      access_token_secret=access_token_secret,
+			                      sleep_on_rate_limit=True)
+			comictweets=[] 
+			# print ("Rate Limit = "+str(api.InitializeRateLimit()))
+			statuses = api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True)
+			for s in api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True):
+				# Tom follows a very specific format for his posts, which makes my job a hell of a lot easier. Thanks, Tom!
+				if ("[Comic][" in s.text):
+					comictweets.append(s.text)\
+					# if the update has not been retweeted
+					if (not s.retweeted):
+						api.PostRetweet(s.id, trim_user=False)
+						print ("Retweeted Comic update!\n"+comictweets[0])
+			time.sleep(60)
+		except Exception as e:
+			raise e
 
 def main():
 	inputthread=threading.Thread(target=read_input)
