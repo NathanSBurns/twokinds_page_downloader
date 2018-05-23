@@ -105,7 +105,7 @@ def remove_temp():
 	global tkpath
 	temp=tkpath+'temp'
 	if os.path.isfile (temp):
-		os.remove(temp)
+		os.remove(temp) 
 
 # status: Boolean. True prints updates, False displays nothing
 # loop: Boolean describing whether or not updates will loop
