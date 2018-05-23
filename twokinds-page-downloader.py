@@ -181,7 +181,8 @@ def retweet_latest_comic():
 			                      access_token_key=access_token_key,
 			                      access_token_secret=access_token_secret,
 			                      sleep_on_rate_limit=True)
-			comictweets=[] 
+			comictweets=[]
+			favorites=api.GetFavorites(user_id=None, screen_name='Hyginx', count=100, since_id=None, max_id=None, include_entities=True, return_json=False) 
 			# print ("Rate Limit = "+str(api.InitializeRateLimit()))
 			statuses = api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True)
 			for s in api.GetUserTimeline(screen_name="TwoKinds", exclude_replies=True):
@@ -192,6 +193,14 @@ def retweet_latest_comic():
 					if (not s.retweeted):
 						api.PostRetweet(s.id, trim_user=False)
 						print ("Retweeted Comic update!\n"+comictweets[0])
+					#Favorites the tweet because if it's worth retweeting, it's worth favoriting
+					if (s not in favorites):
+						try:
+							api.CreateFavorite(status=s, status_id=s.id, include_entities=True)
+							print ('Favorited'+s.text.encode('ascii', 'ignore').decode('unicode_escape'))
+						except Exception as e:
+							if ('You have already favorited this status.' not in str(e)):
+								raise e
 			time.sleep(60)
 		except Exception as e:
 			raise e
